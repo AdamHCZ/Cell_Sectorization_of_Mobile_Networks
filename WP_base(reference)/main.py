@@ -12,7 +12,7 @@ def main(page: ft.Page):
     # Top nav bar (blue like calculator.net)
     navbar = ft.Container(
         content=ft.Row([
-            ft.Text("Calculator.net", color="white", size=22, weight=ft.FontWeight.BOLD),
+            ft.Text("CALCULADORA PARA PLANIFICACION DE RED MOVIL", color="white", size=22, weight=ft.FontWeight.BOLD),
             ft.Row([ft.TextButton("FINANCIAL"), ft.TextButton("FITNESS & HEALTH"), ft.TextButton("MATH", style=ft.ButtonStyle(color=ft.Colors.BLACK87, bgcolor=ft.Colors.AMBER_200)), ft.TextButton("OTHER")], spacing=16)
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
         bgcolor=NAVY, padding=ft.padding.symmetric(20, 10)
