@@ -3,7 +3,7 @@ from theme import *
 from pages.radio_page import build_radio_page
 
 def main(page: ft.Page):
-    page.title = "Name — 1G / 2G Calculator"
+    page.title = "Planificador de Red Movil — 1G / 2G Calculator"
     page.bgcolor = BG
     page.padding = 0
     page.theme_mode = ft.ThemeMode.LIGHT

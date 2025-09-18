@@ -1,6 +1,7 @@
 import flet as ft
 from theme import *
 
+
 class SectionTitle(ft.Text):
     def __init__(self, text: str):
         super().__init__(text, size=20, weight=ft.FontWeight.BOLD, color=NAVY)
@@ -25,21 +26,21 @@ class ErrorBanner(ft.Container):
     def show(self, msg: str): self.text.value = msg; self.visible = True
     def clear(self): self.text.value = ""; self.visible = False
 
-class Asterisk(ft.Text):
+class Asterisk(ft.Text): # Asterisk for required fields defined
     def __init__(self, visible: bool=False):
         super().__init__("*", color=ERROR, size=18, visible=visible, weight=ft.FontWeight.BOLD)
 
-class LabeledField(ft.Column):
+class LabeledField(ft.Column): # Text for inputs with asterisk or not and the inputs section
     def __init__(self, label: str, control: ft.Control):
         self.asterisk = Asterisk(False)
         title_row = ft.Row([ft.Text(label, weight=ft.FontWeight.BOLD, size=14), self.asterisk], spacing=6)
         super().__init__([title_row, control], spacing=6)
 
-class NumberInput(LabeledField):
+class NumberInput(LabeledField): # Number Input for numeric inputs
     def __init__(self, label: str, placeholder: str = "", width: int = 180, value: str | None=None):
         self.field = ft.TextField(value=value or "", hint_text=placeholder, width=width,
                                   bgcolor=INPUT_BG, border_color=BORDER, dense=True, text_size=14,
-                                  content_padding=ft.Padding(10,8,10,8), keyboard_type=ft.KeyboardType.NUMBER)
+                                  content_padding=ft.Padding(10,8,10,8), keyboard_type=ft.KeyboardType.NUMBER) # Search about padding
         super().__init__(label, self.field)
     def as_float(self):
         try: return float(self.field.value)
@@ -48,7 +49,7 @@ class NumberInput(LabeledField):
         try: return int(float(self.field.value))
         except: return None
 
-class SelectInput(LabeledField):
+class SelectInput(LabeledField): # Selecting Input for dropdowns
     def __init__(self, label: str, options: list[str], value: str | None=None, width: int = 180):
         self.dropdown = ft.Dropdown(options=[ft.dropdown.Option(o) for o in options],
                                     value=value or (options[0] if options else None),

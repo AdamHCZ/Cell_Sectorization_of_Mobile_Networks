@@ -17,4 +17,4 @@ def numeros_rombicos(cantidad):
 
 # Obtener los primeros 50
 numbers = numeros_rombicos(50)
-print(numbers)
+#print(numbers)

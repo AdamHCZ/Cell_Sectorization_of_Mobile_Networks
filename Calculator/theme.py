@@ -8,5 +8,6 @@ GREEN = "#629b3a"
 GRAY_BTN = "#d9dee4"
 INPUT_BG = "#ffffff"
 ERROR = "#c62828"
+
 PADDING = 14
 RADIUS = 6

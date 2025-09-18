@@ -1,21 +1,44 @@
 import flet as ft
 from theme import *
 from components.controls import SectionTitle, Card, NumberInput, SelectInput, ErrorBanner, calc_button, clear_button
+from utils.DATA import CELLS
 
 def require_float(field: NumberInput, banner: ErrorBanner, label: str):
-    v = field.as_float(); ok = v is not None; field.asterisk.visible = not ok
+    v = field.as_float(); ok = v is not None and v > 0; field.asterisk.visible = not ok
     if not ok: banner.show(f"{label}: valor inválido"); return None
     return v
 
 def require_int(field: NumberInput, banner: ErrorBanner, label: str):
-    v = field.as_int(); ok = v is not None; field.asterisk.visible = not ok
-    if not ok: banner.show(f"{label}: entero requerido"); return None
+    v = field.as_int(); ok = v is not None and v > 0; field.asterisk.visible = not ok
+    if not ok: banner.show(f"{label}: entero positivo requerido"); return None
     return v
 
-def build_inputs_card(state, banner: ErrorBanner) -> Card:
+
+def require_from_list(field: NumberInput, allowed: list[int], banner: ErrorBanner, label: str) -> int | None:
+    v = field.as_int()
+    ok = (v is not None) and (v in allowed)
+    field.asterisk.visible = not ok
+    if not ok:
+        banner.show(f"{label}: debe ser un numero rómbico válido")
+        return None
+    return v
+
+def require_btn_range(field: NumberInput, range: list[int], banner: ErrorBanner, label: str) -> int | None:
+    v = field.as_int()
+    ok = (v is not None) and (v >= range[0]) and (v <= range[1])
+    field.asterisk.visible = not ok
+    if not ok:
+        banner.show(f"{label}: debe ser un numero rómbico válido")
+        return None
+    return v
+
+def build_inputs_card(state, banner: ErrorBanner, tech: str) -> Card: # For Square of inputs
     state.r_cov = NumberInput("Radio de cobertura (km)")
     state.k_cells = NumberInput("Número de celdas por cluster (k)")
-    state.band = SelectInput("Ancho de banda (MHz)", ["5","10","15","25"], value="10")
+    if tech == "1G":
+        state.band = SelectInput("Ancho de banda (MHz)", ["5","10"], value="10")
+    else: # 2G
+        state.band = SelectInput("Ancho de banda (MHz)", ["10","15","25"], value="10")
     state.n_exp = NumberInput("Valor de n (para la pérdida)")
     state.sectors = SelectInput("Sectores por celda", ["1","3"], value="3")
     state.n_clusters = NumberInput("Número de clusters")
@@ -26,14 +49,14 @@ def build_inputs_card(state, banner: ErrorBanner) -> Card:
         ft.Row([state.sectors, state.n_clusters], spacing=16),
     ], spacing=12))
 
-def build_results_card(state, tech: str) -> Card:
+def build_results_card(state, tech: str) -> Card: # For Square of results
     state.res_subcarriers = ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER)
     state.res_reuse_distance = ft.TextField(read_only=True, value="", suffix_text="km", bgcolor=INPUT_BG, border_color=BORDER)
     state.res_cluster_area = ft.TextField(read_only=True, value="", suffix_text="km²", bgcolor=INPUT_BG, border_color=BORDER)
     state.res_prot_ratio = ft.TextField(read_only=True, value="", suffix_text="dB", bgcolor=INPUT_BG, border_color=BORDER)
     state.res_freq_per_sector = ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER)
     state.res_channels = ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER)
-    channels_row = ft.Row([ft.Text("Número de canales (solo 2G)", weight=ft.FontWeight.BOLD), state.res_channels])
+    channels_row = ft.Row([ft.Text("Número de canales:", weight=ft.FontWeight.NORMAL), state.res_channels]) # Change FontWeight.NORMAL or BOLD
     channels_row.visible = (tech == "2G")
     state.channels_row = channels_row
     return Card(ft.Column([
@@ -46,11 +69,11 @@ def build_results_card(state, tech: str) -> Card:
         channels_row,
     ], spacing=10))
 
-def compute(state, banner: ErrorBanner, tech: str, e=None):
+def compute(state, banner: ErrorBanner, tech: str, e=None): # Operaciones para los resultados
     banner.clear()
     r_km = require_float(state.r_cov, banner, "Radio de cobertura")
-    k = require_int(state.k_cells, banner, "Celdas por cluster")
-    n = require_float(state.n_exp, banner, "Valor de n")
+    k = require_from_list(state.k_cells, CELLS, banner, "Celdas por cluster")
+    n = require_btn_range(state.n_exp,[2.7, 5] , banner, "Valor de n")
     ncl = require_int(state.n_clusters, banner, "Número de clusters")
     if any(v is None for v in [r_km,k,n,ncl]): e and e.page.update(); return
     try: D = 2 * float(r_km) * (3*float(k)) ** 0.5; state.res_reuse_distance.value = f"{D:.3f}"
@@ -62,7 +85,7 @@ def compute(state, banner: ErrorBanner, tech: str, e=None):
     try:
         import math
         rp = 10*math.log10(max(float(k),1)) + (float(n)-2)*5; state.res_prot_ratio.value = f"{rp:.2f}"
-        if rp < 0: banner.show("Red no viable")
+        if rp < 8: banner.show("Red no viable")
     except: state.res_prot_ratio.value = "—"
     bw_mhz = int(state.band.dropdown.value); sectors = int(state.sectors.dropdown.value)
     state.res_subcarriers.value = str(bw_mhz * 10)
@@ -77,7 +100,7 @@ def build_radio_page(page: ft.Page, tech: str):
     class State: pass
     state = State()
     banner = ErrorBanner()
-    inputs = build_inputs_card(state, banner)
+    inputs = build_inputs_card(state, banner, tech)
     results = build_results_card(state, tech)
     def on_clear(e):
         for fld in [state.r_cov.field, state.k_cells.field, state.n_exp.field, state.n_clusters.field]: fld.value = ""
