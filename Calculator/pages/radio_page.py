@@ -24,11 +24,11 @@ def require_from_list(field: NumberInput, allowed: list[int], banner: ErrorBanne
     return v
 
 def require_btn_range(field: NumberInput, range: list[int], banner: ErrorBanner, label: str) -> int | None:
-    v = field.as_int()
+    v = field.as_float()
     ok = (v is not None) and (v >= range[0]) and (v <= range[1])
     field.asterisk.visible = not ok
     if not ok:
-        banner.show(f"{label}: debe ser un numero rómbico válido")
+        banner.show(f"{label}: debe ser un número dentro del rango {range[0]} - {range[1]}")
         return None
     return v
 
@@ -73,26 +73,31 @@ def compute(state, banner: ErrorBanner, tech: str, e=None): # Operaciones para l
     banner.clear()
     r_km = require_float(state.r_cov, banner, "Radio de cobertura")
     k = require_from_list(state.k_cells, CELLS, banner, "Celdas por cluster")
-    n = require_btn_range(state.n_exp,[2.7, 5] , banner, "Valor de n")
+    n = require_btn_range(state.n_exp,[2.7, 5] , banner, "Valor de n") # Range between 2.7 and 5
     ncl = require_int(state.n_clusters, banner, "Número de clusters")
     if any(v is None for v in [r_km,k,n,ncl]): e and e.page.update(); return
-    try: D = 2 * float(r_km) * (3*float(k)) ** 0.5; state.res_reuse_distance.value = f"{D:.3f}"
+    try: D = float(r_km) * ((3*float(k)) ** 0.5); state.res_reuse_distance.value = f"{D:.3f}" # Reuse Distance
     except: state.res_reuse_distance.value = "—"
-    try:
+    try: # Cluster Area
         from math import sqrt
         A = (3*sqrt(3)/2) * (float(r_km)**2) * float(k); state.res_cluster_area.value = f"{A:.3f}"
     except: state.res_cluster_area.value = "—"
-    try:
+    try: # Protection Ratio
         import math
-        rp = 10*math.log10(max(float(k),1)) + (float(n)-2)*5; state.res_prot_ratio.value = f"{rp:.2f}"
-        if rp < 8: banner.show("Red no viable")
+        rp = 10*math.log10((((D/r_km) - 1)**n)/6); state.res_prot_ratio.value = f"{rp:.2f}"
+        if rp < 8 or rp > 12: banner.show("Red no viable")
     except: state.res_prot_ratio.value = "—"
-    bw_mhz = int(state.band.dropdown.value); sectors = int(state.sectors.dropdown.value)
-    state.res_subcarriers.value = str(bw_mhz * 10)
-    state.res_freq_per_sector.value = str(max(bw_mhz // sectors, 1))
+
+    ### ADD FREQUENCIES PER CELL, SECTOR AND CHANNELS
+
+    bw_mhz = int(state.band.dropdown.value); sectors = int(state.sectors.dropdown.value) # Bandwidth and sectors
     if tech == "2G":
-        state.res_channels.value = str(bw_mhz * 2); state.channels_row.visible = True
+        state.res_subcarriers.value = f"{float(bw_mhz) / 0.2:.0f}" # Subcarriers for 2G
+        state.res_freq_per_sector.value = str(max(float(state.res_subcarriers.value) // (sectors * k), 1))
+        state.res_channels.value = str(float(state.res_freq_per_sector.value) * 8); state.channels_row.visible = True
     else:
+        state.res_subcarriers.value = f"{float(bw_mhz) / 0.03:.0f}" # Subcarriers for 1G
+        state.res_freq_per_sector.value = str(max(float(state.res_subcarriers.value) // (sectors * k), 1))
         state.res_channels.value = ""; state.channels_row.visible = False
     e and e.page.update()
 
