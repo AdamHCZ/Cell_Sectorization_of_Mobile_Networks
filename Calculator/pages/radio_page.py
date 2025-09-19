@@ -267,7 +267,7 @@ def compute(state, banner: ErrorBanner, tech: str, e=None): # Operaciones para l
         )
 
         state.table_host_max.content = build_frequency_grid_card(
-            total=total_max // 8,
+            total=total_max // 8,  # Convert channels to frequencies
             k=int(state.k_cells.dropdown.value) if hasattr(state.k_cells, "dropdown") else k,
             sectors=sectors,
             title="RESUMEN DE FRECUENCIAS (Máximo)",
@@ -299,8 +299,9 @@ def build_radio_page(page: ft.Page, tech: str):
     def on_clear(e):
         for fld in [state.r_cov.field, state.k_cells.field, state.n_exp.field, state.n_clusters.field]: fld.value = ""
         for a in [state.r_cov.asterisk, state.k_cells.asterisk, state.n_exp.asterisk, state.n_clusters.asterisk]: a.visible = False
-        for out in [state.res_subcarriers, state.res_reuse_distance, state.res_cluster_area, state.res_prot_ratio, state.res_freq_per_sector, 
-                    state.res_channels, state.res_freq_per_cell, state.res_freq_per_cluster, state.res_freq_per_SA]: out.value = ""
+        for out in [state.res_subcarriers, state.res_reuse_distance, state.res_cluster_area, state.res_prot_ratio, state.res_freq_per_sector[0],
+                    state.res_freq_per_sector[1], state.res_channels[0], state.res_channels[1], state.res_freq_per_cell[0], state.res_freq_per_cell[1], 
+                    state.res_freq_per_cluster[0], state.res_freq_per_cluster[0], state.res_freq_per_SA[0], state.res_freq_per_SA[1]]: out.value = ""
         if tech == "1G":
             state.table_host.content = build_empty_freq_table_placeholder()
         else:
