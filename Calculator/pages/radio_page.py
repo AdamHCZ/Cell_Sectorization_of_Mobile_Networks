@@ -13,7 +13,6 @@ def require_int(field: NumberInput, banner: ErrorBanner, label: str):
     if not ok: banner.show(f"{label}: entero positivo requerido"); return None
     return v
 
-
 def require_from_list(field: NumberInput, allowed: list[int], banner: ErrorBanner, label: str) -> int | None:
     v = field.as_int()
     ok = (v is not None) and (v in allowed)
@@ -54,9 +53,19 @@ def build_results_card(state, tech: str) -> Card: # For Square of results
     state.res_reuse_distance = ft.TextField(read_only=True, value="", suffix_text="km", bgcolor=INPUT_BG, border_color=BORDER)
     state.res_cluster_area = ft.TextField(read_only=True, value="", suffix_text="km²", bgcolor=INPUT_BG, border_color=BORDER)
     state.res_prot_ratio = ft.TextField(read_only=True, value="", suffix_text="dB", bgcolor=INPUT_BG, border_color=BORDER)
-    state.res_freq_per_sector = ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER)
-    state.res_channels = ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER)
-    channels_row = ft.Row([ft.Text("Número de canales:", weight=ft.FontWeight.NORMAL), state.res_channels]) # Change FontWeight.NORMAL or BOLD
+    state.res_freq_per_cluster = [ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER),
+                                  ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER)]
+    state.res_freq_per_cell = [ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER),
+                               ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER)]
+    state.res_freq_per_sector = [ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER),
+                                 ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER)]
+    state.res_freq_per_SA = [ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER),
+                                 ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER)]
+    state.res_channels = [ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER), 
+                          ft.TextField(read_only=True, value="", bgcolor=INPUT_BG, border_color=BORDER)]
+    channels_row = ft.Row([ft.Text("Número de canales por sector:", weight=ft.FontWeight.NORMAL), 
+                            ft.Column([ft.Text("Mínimo:"), state.res_channels[0]], spacing=10),
+                            ft.Column([ft.Text("Máximo:"), state.res_channels[1]], spacing=10)], spacing=12) # Change FontWeight.NORMAL or BOLD
     channels_row.visible = (tech == "2G")
     state.channels_row = channels_row
     return Card(ft.Column([
@@ -65,9 +74,28 @@ def build_results_card(state, tech: str) -> Card: # For Square of results
         ft.Row([ft.Text("Distancia de reutilización:"), state.res_reuse_distance], spacing=12),
         ft.Row([ft.Text("Área del cluster:"), state.res_cluster_area], spacing=12),
         ft.Row([ft.Text("Relación de protección rp:"), state.res_prot_ratio], spacing=12),
-        ft.Row([ft.Text("Número de frecuencias por sector:"), state.res_freq_per_sector], spacing=12),
+        ft.Row([
+            ft.Text(
+                "Número de frecuencias por sector:"
+            ),
+            ft.Column([ft.Text("Mínimo:"), state.res_freq_per_sector[0]], spacing=10),
+            ft.Column([ft.Text("Máximo:"), state.res_freq_per_sector[1]], spacing=10)
+        ], spacing=12),
         channels_row,
-    ], spacing=10))
+        ft.Row([
+            ft.Text(
+                "Número de canales por celda:" if tech == "2G" else "Número de subportadoras por celda:"
+            ),
+            ft.Column([ft.Text("Mínimo:"), state.res_freq_per_cell[0]], spacing=10),
+            ft.Column([ft.Text("Máximo:"), state.res_freq_per_cell[1]], spacing=10)
+        ], spacing=12),
+        ft.Row([
+            ft.Text(
+                "Número de canales por cluster:" if tech == "2G" else "Número de subportadoras por cluster: Minimo"
+            ),
+            ft.Column([ft.Text("Mínimo:"), state.res_freq_per_cluster[0]], spacing=10),
+            ft.Column([ft.Text("Máximo:"), state.res_freq_per_cluster[1]], spacing=10)
+        ], spacing=12)], spacing=10,))
 
 def compute(state, banner: ErrorBanner, tech: str, e=None): # Operaciones para los resultados
     banner.clear()
@@ -88,17 +116,32 @@ def compute(state, banner: ErrorBanner, tech: str, e=None): # Operaciones para l
         if rp < 8 or rp > 12: banner.show("Red no viable")
     except: state.res_prot_ratio.value = "—"
 
-    ### ADD FREQUENCIES PER CELL, SECTOR AND CHANNELS
+### ADD FREQUENCIES PER CELL, SECTOR AND CHANNELS
 
     bw_mhz = int(state.band.dropdown.value); sectors = int(state.sectors.dropdown.value) # Bandwidth and sectors
     if tech == "2G":
-        state.res_subcarriers.value = f"{float(bw_mhz) / 0.2:.0f}" # Subcarriers for 2G
-        state.res_freq_per_sector.value = str(max(float(state.res_subcarriers.value) // (sectors * k), 1))
-        state.res_channels.value = str(float(state.res_freq_per_sector.value) * 8); state.channels_row.visible = True
+        state.res_subcarriers.value = f"{(float(bw_mhz) / 0.2) - 1:.0f}" # Subcarriers for 2G
+        state.res_freq_per_sector[0].value = str(max(float(state.res_subcarriers.value) // (sectors * k), 1))
+        state.res_freq_per_sector[1].value = float(state.res_freq_per_sector[0].value) + 1
+        state.res_channels[0].value = str(float(state.res_freq_per_sector[0].value) * 8)
+        state.res_channels[1].value = str(float(state.res_freq_per_sector[1].value) * 8); state.channels_row.visible = True
+        state.res_freq_per_cell[0].value = str(float(state.res_channels[0].value) * sectors)
+        state.res_freq_per_cell[1].value = str(float(state.res_channels[1].value) * sectors)
+
     else:
         state.res_subcarriers.value = f"{float(bw_mhz) / 0.03:.0f}" # Subcarriers for 1G
-        state.res_freq_per_sector.value = str(max(float(state.res_subcarriers.value) // (sectors * k), 1))
+        state.res_freq_per_sector[0].value = str(max(float(state.res_subcarriers.value) // (sectors * k), 1))
+        state.res_freq_per_sector[1].value = float(state.res_freq_per_sector[0].value) + 1
         state.res_channels.value = ""; state.channels_row.visible = False
+
+        state.res_freq_per_cell[0] = str(float(state.res_freq_per_sector[0].value) * sectors)
+        state.res_freq_per_cell[1] = str(float(state.res_freq_per_sector[1].value) * sectors)
+
+
+    state.res_freq_per_cluster[0].value = str(float(state.res_freq_per_cell[0].value) * k)
+    state.res_freq_per_cluster[1].value = str(float(state.res_freq_per_cell[1].value) * k)
+    state.res_freq_per_SA[0].value = str(float(state.res_freq_per_cell[0].value) * ncl)
+    state.res_freq_per_SA[1].value = str(float(state.res_freq_per_cell[1].value) * ncl)
     e and e.page.update()
 
 def build_radio_page(page: ft.Page, tech: str):
@@ -110,7 +153,8 @@ def build_radio_page(page: ft.Page, tech: str):
     def on_clear(e):
         for fld in [state.r_cov.field, state.k_cells.field, state.n_exp.field, state.n_clusters.field]: fld.value = ""
         for a in [state.r_cov.asterisk, state.k_cells.asterisk, state.n_exp.asterisk, state.n_clusters.asterisk]: a.visible = False
-        for out in [state.res_subcarriers, state.res_reuse_distance, state.res_cluster_area, state.res_prot_ratio, state.res_freq_per_sector, state.res_channels]: out.value = ""
+        for out in [state.res_subcarriers, state.res_reuse_distance, state.res_cluster_area, state.res_prot_ratio, state.res_freq_per_sector, 
+                    state.res_channels, state.res_freq_per_cell, state.res_freq_per_cluster, state.res_freq_per_SA]: out.value = ""
         banner.clear(); page.update()
     buttons = ft.Row([calc_button("Calcular", lambda e: compute(state, banner, tech, e)),
                       clear_button(on_clear)], spacing=10)

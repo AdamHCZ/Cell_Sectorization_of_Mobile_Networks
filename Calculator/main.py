@@ -8,7 +8,7 @@ def main(page: ft.Page):
     page.padding = 0
     page.theme_mode = ft.ThemeMode.LIGHT
 
-    selected = {"tech": "2G"}
+    selected = {"tech": "2G"} # Default technology
 
     def render():
         def nav_button(label):

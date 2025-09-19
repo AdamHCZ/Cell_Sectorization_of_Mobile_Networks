@@ -1,7 +1,6 @@
 import flet as ft
 from theme import *
 
-
 class SectionTitle(ft.Text):
     def __init__(self, text: str):
         super().__init__(text, size=20, weight=ft.FontWeight.BOLD, color=NAVY)
