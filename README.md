@@ -28,9 +28,16 @@ También genera **tablas de asignación de frecuencias** de manera dinámica, ba
 
 ---
 
-## 🖼️ Captura de Pantalla
+## 🖼️ Capturas de Pantalla
 
-*(Agrega aquí una captura de tu aplicación en ejecución si es posible)*
+### 📥 Entradas
+![Entradas](Pictures/Inputs.png)
+
+### 📊 Resultados
+![Resultados](Pictures/Results.png)
+
+### 🖥️ Vista Completa
+![Vista completa](Pictures/Entire.png)
 
 ---
 

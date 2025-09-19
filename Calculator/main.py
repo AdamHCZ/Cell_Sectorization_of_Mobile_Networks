@@ -25,7 +25,7 @@ def main(page: ft.Page):
 
         navbar = ft.Container(
             content=ft.Row([
-                ft.Text("Calculator.net", color="white", size=22, weight=ft.FontWeight.BOLD),
+                ft.Text("MobileCalculator.net", color="white", size=22, weight=ft.FontWeight.BOLD),
                 ft.Row([nav_button("1G"), nav_button("2G")], spacing=12)
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             bgcolor=NAVY, padding=ft.padding.symmetric(20, 10)
@@ -48,7 +48,7 @@ def main(page: ft.Page):
 
         body = ft.Container(
             content=ft.Column([
-                ft.Text("Name", size=28, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK87),
+                ft.Text("Planificador de Red Movil — 1G / 2G Calculator", size=28, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK87),
                 ft.Text(f"Parámetros de entrada y resultados — {selected['tech']}", size=14, color=MUTED),
 
                 top_band,          
@@ -68,4 +68,4 @@ def main(page: ft.Page):
     render()
 
 if __name__ == "__main__":
-    ft.app(target=main, view=ft.WEB_BROWSER, port=5000)
+    ft.app(target=main, view=ft.WEB_BROWSER, port=8080)
