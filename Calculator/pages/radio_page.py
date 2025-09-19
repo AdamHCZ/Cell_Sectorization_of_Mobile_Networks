@@ -1,7 +1,8 @@
 import flet as ft
 from theme import *
 from components.controls import SectionTitle, Card, NumberInput, SelectInput, ErrorBanner, calc_button, clear_button
-from utils.DATA import CELLS
+from utils.DATA import CELLS, ABC
+import math
 
 def require_float(field: NumberInput, banner: ErrorBanner, label: str):
     v = field.as_float(); ok = v is not None and v > 0; field.asterisk.visible = not ok
@@ -97,6 +98,113 @@ def build_results_card(state, tech: str) -> Card: # For Square of results
             ft.Column([ft.Text("Máximo:"), state.res_freq_per_cluster[1]], spacing=10)
         ], spacing=12)], spacing=10,))
 
+
+def build_empty_freq_table_placeholder() -> ft.Control: # Placeholder table when no data
+    columns = [ft.DataColumn(ft.Text(f"{i+1}(A)")) for i in range(4)]
+    rows = []
+    for _ in range(4):
+        cells = [ft.DataCell(ft.Text("-")) for _ in range(4)]
+        rows.append(ft.DataRow(cells=cells))
+
+    table = ft.DataTable(
+        columns=columns,
+        rows=rows,
+        heading_row_color=ft.Colors.with_opacity(0.05, ft.Colors.BLACK),
+        data_row_min_height=40,
+        border=ft.border.all(1, BORDER),
+        divider_thickness=0.5,
+    )
+    return Card(ft.Column([SectionTitle("RESUMEN DE FRECUENCIAS"), table], spacing=12))
+
+
+def build_frequency_grid_card(total: int, k: int, sectors: int, title: str) -> ft.Control:
+
+    if total is None or total <= 0 or k <= 0 or sectors <= 0:
+        total = 0
+
+    num_cols = k * sectors
+    # Build headers: for each cell index j in [1..k], show sectors A.. as needed
+    headers = []
+    for j in range(1, k + 1):
+        for s in range(sectors):
+            sector_label = ABC[s] if s < len(ABC) else f"A{s+1}"
+            headers.append(ft.DataColumn(ft.Text(f"{j} ({sector_label})")))
+
+    # Build content vector: 1..total as strings
+    data = [str(i) for i in range(1, total + 1)]
+
+    # Rows count
+    num_rows = math.ceil(total / num_cols) if num_cols > 0 else 0
+
+    # Pad to rectangle with "-"
+    pad = num_rows * num_cols - len(data)
+    if pad > 0:
+        data.extend(["-"] * pad)
+
+    # Build rows
+    rows = []
+    for r in range(num_rows if num_rows > 0 else 1):  # show at least 1 row if total=0
+        start = r * num_cols
+        end = start + num_cols
+        row_slice = data[start:end] if num_cols > 0 else ["-"] * 1
+        cells = [ft.DataCell(ft.Text(val)) for val in row_slice] if num_cols > 0 else [ft.DataCell(ft.Text("-"))]
+        rows.append(ft.DataRow(cells=cells))
+
+    # If num_cols is 0 (invalid k*sectors), make a tiny 1-col table to avoid crash
+    table = ft.DataTable(
+        columns=headers if num_cols > 0 else [ft.DataColumn(ft.Text("—"))],
+        rows=rows,
+        heading_row_color=ft.Colors.with_opacity(0.05, ft.Colors.BLACK),
+        data_row_min_height=40,
+        border=ft.border.all(1, BORDER),
+        divider_thickness=0.5,
+    )
+
+    return Card(ft.Column([SectionTitle(title), table], spacing=12))
+
+
+
+
+
+
+def build_freq_table(state, banner: ErrorBanner, tech: str) -> Card:
+    z = 1
+    J = require_from_list(state.k_cells, CELLS, banner, "Celdas por cluster")
+    S = state.sectors.dropdown.value
+
+    content_1 = [str(i) for i in range(int(state.res_freq_per_cluster[0].value))]
+    content_2 = [str(i) for i in range(int(state.res_freq_per_cluster[1].value))]
+    NC_1 = S * J
+    NR_1 = len(content_1) // NC_1
+    if len(content_1) % NC_1 != 0: NR_1 += 1
+    while len(content_1) < NR_1 * NC_1: content_1.append("-")
+    NC_2 = S * J
+    NR_2 = len(content_2) // NC_2
+    if len(content_2) % NC_2 != 0: NR_2 += 1
+    while len(content_2) < NR_2 * NC_2: content_2.append("-")
+    
+
+    table = ft.DataTable(
+        columns=[
+            (ft.DataColumn(ft.Text(f"{n} ({ABC[m]})")) for n in range(J) for m in range(S))
+        ],
+        rows=[
+            ft.DataRow(cells=[
+                [ft.DataCell(ft.Text(b)) for a in range(NC_1)]
+            ]) for b in range(content_1)
+        ],
+        heading_row_color=ft.Colors.with_opacity(0.05, ft.Colors.BLACK),
+        data_row_min_height=40,
+        border=ft.border.all(1, BORDER),
+        divider_thickness=0.5,
+    )
+
+    return Card(ft.Column([
+        SectionTitle("RESUMEN DE FRECUENCIAS"),
+        table
+    ], spacing=12))
+
+
 def compute(state, banner: ErrorBanner, tech: str, e=None): # Operaciones para los resultados
     banner.clear()
     r_km = require_float(state.r_cov, banner, "Radio de cobertura")
@@ -142,6 +250,36 @@ def compute(state, banner: ErrorBanner, tech: str, e=None): # Operaciones para l
     state.res_freq_per_cluster[1].value = str(float(state.res_freq_per_cell[1].value) * k)
     state.res_freq_per_SA[0].value = str(float(state.res_freq_per_cell[0].value) * ncl)
     state.res_freq_per_SA[1].value = str(float(state.res_freq_per_cell[1].value) * ncl)
+
+    try:
+        k = int(state.k_cells.field.value) if hasattr(state.k_cells, "field") else int(state.k_cells.dropdown.value)
+    except Exception:
+        # If you used SelectInput for k, use dropdown; if NumberInput, use field.
+        # Fallback to parsing from your validated value 'k' if you already have it as int.
+        pass
+
+    try:
+        sectors = int(state.sectors.dropdown.value)
+    except Exception:
+        sectors = 1
+
+    def safe_int(s, default=0):
+        try:
+            return int(float(s))
+        except Exception:
+            return default
+
+    total_min = safe_int(state.res_freq_per_cluster[0].value, 0)
+    total_max = safe_int(state.res_freq_per_cluster[1].value, 0)
+
+    # Rebuild the table and replace host content
+    state.table_host.content = build_frequency_grid_card(
+        total=total_min,
+        k=int(state.k_cells.dropdown.value) if hasattr(state.k_cells, "dropdown") else k,
+        sectors=sectors,
+        title="RESUMEN DE FRECUENCIAS (Mínimo)"
+    )
+
     e and e.page.update()
 
 def build_radio_page(page: ft.Page, tech: str):
@@ -150,12 +288,16 @@ def build_radio_page(page: ft.Page, tech: str):
     banner = ErrorBanner()
     inputs = build_inputs_card(state, banner, tech)
     results = build_results_card(state, tech)
+    state.table_host = ft.Container(
+        content=build_empty_freq_table_placeholder(),
+    )
     def on_clear(e):
         for fld in [state.r_cov.field, state.k_cells.field, state.n_exp.field, state.n_clusters.field]: fld.value = ""
         for a in [state.r_cov.asterisk, state.k_cells.asterisk, state.n_exp.asterisk, state.n_clusters.asterisk]: a.visible = False
         for out in [state.res_subcarriers, state.res_reuse_distance, state.res_cluster_area, state.res_prot_ratio, state.res_freq_per_sector, 
                     state.res_channels, state.res_freq_per_cell, state.res_freq_per_cluster, state.res_freq_per_SA]: out.value = ""
+        state.table_host.content = build_empty_freq_table_placeholder()
         banner.clear(); page.update()
     buttons = ft.Row([calc_button("Calcular", lambda e: compute(state, banner, tech, e)),
                       clear_button(on_clear)], spacing=10)
-    return ft.Column([banner, inputs, buttons, results], spacing=16)
+    return ft.Column([banner, inputs, buttons, results, state.table_host], spacing=16)
