@@ -260,14 +260,14 @@ def compute(state, banner: ErrorBanner, tech: str, e=None): # Operaciones para l
     # Rebuild the table and replace host content
     if tech == "2G":
         state.table_host_min.content = build_frequency_grid_card(
-            total=total_min,
+            total=total_min // 8,  # Convert channels to frequencies
             k=int(state.k_cells.dropdown.value) if hasattr(state.k_cells, "dropdown") else k,
             sectors=sectors,
             title="RESUMEN DE FRECUENCIAS (Mínimo)",
         )
 
         state.table_host_max.content = build_frequency_grid_card(
-            total=total_max,
+            total=total_max // 8,
             k=int(state.k_cells.dropdown.value) if hasattr(state.k_cells, "dropdown") else k,
             sectors=sectors,
             title="RESUMEN DE FRECUENCIAS (Máximo)",
